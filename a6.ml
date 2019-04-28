@@ -3,6 +3,7 @@ exception InvalidParameterNumbers
 exception InvalidProcedureName
 exception EmptyStackException
 exception InvalidStackException
+exception ElementNotFoundException
 type funcNode = Node of (string * (string list) * (string list) * funcNode) | Empty
 (*funciton name , parameters list, local variables list*)
 type answer = N of int | NULL
@@ -80,6 +81,8 @@ let rec generateNull n =
 
 let getLocalVariablesSize x = match x with
     Node(_,_,l,_)-> List.length l
+let getLocals x = match x with
+    Node(_,_,l,_) -> l
 
 let getParametersSize x = match x with
     Node(_,para,_,_)-> List.length para
@@ -88,11 +91,17 @@ let getParametersSize x = match x with
 let rec getNodesTillParent p nlist = match nlist with (*returns list till you find p in the list *)
     [] -> []
   | n::nlist1 -> if ( (getParent p) = n) then [n]
-    else [n]::(getNodesTillParent p nlist1)
+    else n::(getNodesTillParent p nlist1)
 
-let rec removeNodesTillParent p nlist = match nlist with
+let rec getNodesBeforeParent p nlist = match nlist with (*returns list till you find p in the list *)
+    [] -> []
+  | n::nlist1 -> if ( (getParent p) = n) then []
+    else n::(getNodesBeforeParent p nlist1)
+
+
+let rec removeNodesBeforeParent p nlist = match nlist with
     []->[]
-  |n::nlist1 -> if (getParent p) = n then [] else removeNodesTillParent nlist1
+  |n::nlist1 -> if (getParent p) = n then [] else removeNodesBeforeParent nlist1
 
 let getFrameSize fnode = match fnode with
     Node(name,parameters,locals,_)-> 4 + (List.length parameters)+ (List.length locals)
@@ -113,10 +122,17 @@ let callProcedure pname parameters stack callstack fp =  (*returns a tuple of mo
     raise InvalidFunctionCall
 
 
-let rec removeTillId stack = match stack with
+let rec removeBeforeId stack = match stack with
     [] -> []
   | ID(_,_,_)::stack1 -> stack
-  | s::stack1 -> removeTillId stack1
+  | s::stack1 -> removeBeforeId stack1
+
+let rec getBeforeId stack = match stack with
+    [] -> []
+  | ID(_,_,_)::stack1 -> []
+  | s::stack1 -> s :: (getBeforeId stack1)
+
+
 let rec createAssociation alist blist = match (alist,blist) with
     ([],[])-> []
   | ([],list1)-> raise IncompatibleAssociation
@@ -152,7 +168,7 @@ let  currentVariableValuePairs stack callstack =
   let localAndParameters = match topFunction with
       Node(_,parameters,locals,parent) ->(locals,parameters) in
 
-  let parameterValues = getFirstN (getParametersSize topFunction) (removeFirstN 3 (removeTillId stack)) in
+  let parameterValues = getFirstN (getParametersSize topFunction) (removeFirstN 3 (removeBeforeId stack)) in
   let parameterVariables = snd localAndParameters in
 
   let elementsTillId = numElementsTillId stack in
@@ -164,32 +180,62 @@ let  currentVariableValuePairs stack callstack =
 
   let variableValueLists = unionWithOverWrite parametervariableValuePairs localvariableValuePairs
 
-let rec getAllAccessibleVarialbes stack callstack fp =
-  if(callstack = [])then (currentVariableValuePairs stack callstack)
+let moveToStaticParentLevel stack callstack fp =
+  if(List.tl callstack = [])then (stack,callstack,fp)
   else
-    let toMoveFromFpSL = match   List.hd(List.tl (List.tl (removeTillId stack))) with N(x)-> x | _ -> raise InvalidStackException in
+    let toMoveFromFpSL = match   List.hd(List.tl (List.tl (removeBeforeId stack))) with N(x)-> x | _ -> raise InvalidStackException in
 
     let topProcedure = List.hd callstack in
-    let modifiedStack =  List.removeFirstN (3 + List.length (getParametersSize topProcedure)) (removeTillId stack) in
+    let modifiedStack =   (removeBeforeId stack) in
     let numLocalsInStaticParent = match List.hd(removeFirstN toMoveFromFpSL modifiedStack) with
         ID(x,parameters,locals)->List.length locals
       | _ -> raise InvalidStackException in
 
-    let newCallStack = removeNodesTillParent (List.hd callstack) callstack in
+    let newCallStack = removeNodesBeforeParent (List.hd callstack) callstack in (*keeps the parent*)
+    let modifiedStack = (removeFirstN (toMoveFromFpSL -1 - getLocalVariablesSize(List.hd newCallStack)) modifiedStack) in
+    (modifiedStack,newCallStack,fp - toMoveFromFpSL)
 
-    unionWithOverWrite
-      (getAllAccessibleVarialbes  (removeFirstN ( toMoveFromFpSL-1-getLocalVariablesSize (List.hd newCallStack) )  modifiedStack)  newCallStack  (fp - toMoveFromFpSL) )
-      (currentVariableValuePairs stack callstack)
+let getStacksBeforeStaticParent  stack callstack =
+  if(List.tl callstack = []) then (stack,callstack)
+  else
+   let toMoveFromFpSL = match   List.hd(List.tl (List.tl (removeBeforeId stack))) with N(x)-> x | _ -> raise InvalidStackException in
+   let topProcedure = List.hd callstack in
+   let modifiedStack =   (removeBeforeId stack) in
+   let numLocalsInStaticParent = match List.hd(removeFirstN toMoveFromFpSL modifiedStack) with
+       ID(x,parameters,locals)->List.length locals
+     | _ -> raise InvalidStackException in
+   let newCallStack = getNodesBeforeParent (List.hd callstack) callstack in (*keeps the parent*)
+   let modifiedStack = (getBeforeId stack)@(getFirstN (toMoveFromFpSL -1 - getLocalVariablesSize(List.hd newCallStack)) modifiedStack) in
+
+   (modifiedStack,newCallStack)
 
 
 
-
-
+let rec getAllAccessibleVariables (stack, callstack, fp) =
+  if(List.tl callstack = [])then (currentVariableValuePairs stack callstack)
+  else
+    unionWithOverWrite (getAllAccessibleVariables(moveToStaticParentLevel stack callstack fp))  (currentVariableValuePairs stack callstack)
 
 let returnBack stack callstack fp=  (*gives current frame pointer in fp*)
   let topProcedure = List.hd callstack in
-  let modifiedStack =  List.removeFirstN (3 + List.length (getParametersSize topProcedure)) (removeTillId stack) in
-  let toMoveFromFpDL = match List.hd(List.tl (removeTillId stack)) with
+  let modifiedStack =  List.removeFirstN (3 + List.length (getParametersSize topProcedure)) (removeBeforeId stack) in
+  let toMoveFromFpDL = match List.hd(List.tl (removeBeforeId stack)) with
       N(x)-> x
     |_ -> raise InvalidStackException  in
   (modifiedStack,  List.tl callstack  , fp - toMoveFromFpDL)
+
+
+let rec getPosition x mlist = match x with
+    [] -> raise ElementNotFoundException
+  | m::n -> if(m = x )then 1 else 1 + getPosition
+
+let rec modifyVariable x value (stack,callstack,fp) =
+  if isMember x getLocals(List.hd callstack) then
+    let rankInLocals = getPosition x getLocals(List.hd callstack)in
+    let elementsBeforeVariable = numElementsTillId stack -1 -getLocalVariablesSize (List.hd callstack) + rankInLocals - 1in
+    (getFirstN elementsBeforeVariable stack )@(N(value))@ (removeFirstN (elementsBeforeVariable+1)  stack)
+  else
+
+    let (stack1,callstack1) =  getStacksBeforeStaticParent stack callstack in
+    let (stack2,callstack2) =  (modifyVariable x value (moveToStaticParentLevel))
+        (stack1@stack2, callstack1@callstack2)
