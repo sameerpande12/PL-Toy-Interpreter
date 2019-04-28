@@ -3,6 +3,7 @@ exception InvalidParameterNumbers
 exception InvalidProcedureName
 exception EmptyStackException
 exception InvalidStackException
+exception EmptyNodeException
 exception ElementNotFoundException
 type funcNode = Node of (string * (string list) * (string list) * funcNode) | Empty
 type answer = N of int | NULL
@@ -10,33 +11,33 @@ type identity = ID of (string * (string list) *(string list))
 (*funciton name , parameters list, local variables list*)
 
 
-let main = Node("main",[],["a";"b";"c"],Empty) ;;
-let p =Node("P",["x";"y"],["z";"a"],main) in
-let q =Node("Q",["z";"w"],["x","b"],main) in
-let r =Node("R",["w";"i"],["j","b"],p) in
-let s =Node("S",["c";"k"],["m","n"],p) in
-let t =Node("T",["a";"y"],["i","f"],q) in
-let u =Node("U",["c";"z"],["p","g"],q) in
-let v =Node("V",["m";"n"],["c"],r) in
-let w =Node("W",["m";"p"],["j","h"],t) in
+let main = Node("main",[],["a";"b";"c"],Empty)
+let p =Node("P",["x";"y"],["z";"a"],main)
+let q =Node("Q",["z";"w"],["x";"b"],main)
+let r =Node("R",["w";"i"],["j";"b"],p)
+let s =Node("S",["c";"k"],["m";"n"],p)
+let t =Node("T",["a";"y"],["i";"f"],q)
+let u =Node("U",["c";"z"],["p";"g"],q)
+let v =Node("V",["m";"n"],["c"],r)
+let w =Node("W",["m";"p"],["j";"h"],t)
 
 
 
 let getVariablesUsed fnode = match fnode with
     (_,parameters,locals,_)-> parameters @ locals
-  | _ -> raise InvalidProcedure
+
 
 
 let rec getID x = match x with
     main ->ID("main",[],["a";"b";"c"])
   | p -> ID("P",["x";"y"],["z";"a"])
-  | q -> ID("Q",["z";"w"],["x","b"])
-  | r -> ID("R",["w";"i"],["j","b"])
-  | s -> ID("S",["c";"k"],["m","n"])
-  | t -> ID("T",["a";"y"],["i","f"])
-  | u -> ID("U",["c";"z"],["p","g"])
+  | q -> ID("Q",["z";"w"],["x";"b"])
+  | r -> ID("R",["w";"i"],["j";"b"])
+  | s -> ID("S",["c";"k"],["m";"n"])
+  | t -> ID("T",["a";"y"],["i";"f"])
+  | u -> ID("U",["c";"z"],["p";"g"])
   | v -> ID("V",["m";"n"],["c"])
-  | w -> ID("W",["m";"p"],["j","h"])
+  | w -> ID("W",["m";"p"],["j";"h"])
   | _ -> raise InvalidProcedureName
 
 
@@ -66,6 +67,7 @@ let rec getAllAncestors fnode =
 
 let getParent fnode = match fnode with
     Node(_,_,_,x)->x
+  | Empty -> raise EmptyNodeException
 
 
 let rec isMember a mlist = match mlist with
@@ -80,7 +82,8 @@ let rec union l1 l2 = match l1 with
 
 let canCall pnode qnode = (*asks if pnode can call qnode*)
   let ancestors = getAllAncestors pnode in
-  if (isMember qnode ancestors) || (isMember (getParent qnode) ancestors) then true
+  let parent = getParent qnode in
+  if (isMember qnode ancestors) || (isMember parent ancestors) (*|| (isMember (getParent qnode) ancestors)*) then true
   else false
 
 let rec generateNull n =
