@@ -1,3 +1,16 @@
+(*
+Frame structure
+
+
+
+fp -> ID(name,parameters,locals)
+       integerValue by how much we should move down from fp to go to previous functions frame pointer
+       integerValue by how much we should move down from fp to go to previous statically linked frame pointer
+       Parameters (in the order as: if ID contains [x,y] then   x   in the stack
+                                                                y           )
+
+*)
+
 #load "a6.cmo";;
 
 open A6;;
@@ -11,28 +24,29 @@ let t =Node("T",["a";"y"],["i";"f"],q);;
 let u =Node("U",["c";"z"],["p";"g"],q);;
 let v =Node("V",["m";"n"],["c"],r);;
 let w =Node("W",["m";"p"],["j";"h"],t);;
+let allProcedures = [main;p;q;r;s;t;u;v];;
 
 let stack = [N(0);N(0);N(0)]@[REG([0;0;0;0])]@[getID main]@[N(0);N(0)] ;;
 let callstack = [main] ;;
 let fp = 3 ;;
 
-let (stack,callstack,fp) = callProcedure "P" [N(0);N(0)] stack callstack fp;;
+
 
 let printElement x = match x with
     N(y) -> Printf.printf "    %d\n" y
 
   | ID(name,parameters,locals) -> Printf.printf "fp->%s\n" name
   | REG(mlist) ->   Printf.printf "Reg-(0,0,0,0)\n";;
-
+;;
 
 let printCaller x = match x with
     Node(y,_,_,_) -> Printf.printf "%s\n" y
   | Empty -> Printf.printf "Empty\n";;
-
+;;
 let funcName x = match x with
     Node (y,_,_,_) -> y
   | Empty -> "EMPTY";;
-
+;;
 let printStack stk = List.iter printElement stk;;
 let printCallerStack cstk = List.iter printCaller cstk;;
 
@@ -48,5 +62,23 @@ let rec printSL stack callstack fp =
 
     )
 ;;
+
+let printAllAccessibleProcedures x =
+  let tempPrint (procedure,boolval) = match procedure with
+      Node(y,_,_,_) ->   if(boolval) then Printf.printf "%s -> Accessible\n" y
+      else Printf.printf "%s -> Unaccessible\n" y
+    | Empty -> Printf.printf "Empty procedure\n"
+  in
+
+  List.iter tempPrint (createAssociation allProcedures (List.map (canCall x) allProcedures))
+;;
+
+
+let (stack,callstack,fp) = callProcedure "P" [N(0);N(0)] stack callstack fp;;
 printSL stack callstack fp;;
 getAllAccessibleVariables (stack,callstack,fp);;
+let (stack,callstack,fp) = returnBack stack callstack fp;;
+
+let (stack,callstack,fp) = callProcedure "P" [N(1);N(2)] stack callstack fp;;
+let (stack,callstack,fp) = callProcedure "Q" [N(3);N(4)] stack callstack fp;;
+let (stack,callstack,fp) = callProcedure "T" [N(5);N(6)] stack callstack fp;;

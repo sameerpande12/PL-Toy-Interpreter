@@ -91,6 +91,11 @@ let getLocalVariablesSize x = match x with
 let getLocals x = match x with
     Node(_,_,l,_) -> l
   | Empty -> []
+let getParameters x = match x with
+    Node(_,para,_,_) -> para
+  | Empty -> []
+
+
 let getParametersSize x = match x with
     Node(_,para,_,_)-> List.length para
   | Empty ->0
@@ -237,9 +242,15 @@ let rec getPosition x mlist = match mlist with
 let rec modifyVariable x value (stack,callstack,fp) =
 
   let localVbls = getLocals (List.hd callstack) in
+  let parameterVbls = getParameters (List.hd callstack) in
   if isMember x localVbls then
     let rankInLocals = getPosition x  localVbls in
     let elementsBeforeVariable = numElementsTillId stack -1 -getLocalVariablesSize (List.hd callstack) + rankInLocals - 1 in
+    ((getFirstN elementsBeforeVariable stack )@[N(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
+  else if(isMember x parameterVbls) then
+    let rankInPara = getPosition x parameterVbls in
+    let elementsBeforeVariable = numElementsTillId stack + 1 + 2 + rankInPara-1 in
+
     ((getFirstN elementsBeforeVariable stack )@[N(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
   else
     if(List.tl callstack = [])then raise ElementNotFoundException
