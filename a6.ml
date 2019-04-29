@@ -3,23 +3,15 @@ exception InvalidParameterNumbers
 exception InvalidProcedureName
 exception EmptyStackException
 exception InvalidStackException
+exception InvalidFunctionCall
+exception IncompatibleAssociation
 exception EmptyNodeException
 exception ElementNotFoundException
 type funcNode = Node of (string * (string list) * (string list) * funcNode) | Empty
-type answer = N of int | NULL
-type identity = ID of (string * (string list) *(string list))
+type stackElementType = N of int | NULL | ID of (string * (string list) *(string list)) | REG of (int list)
 (*funciton name , parameters list, local variables list*)
 
 
-let main = Node("main",[],["a";"b";"c"],Empty)
-let p =Node("P",["x";"y"],["z";"a"],main)
-let q =Node("Q",["z";"w"],["x";"b"],main)
-let r =Node("R",["w";"i"],["j";"b"],p)
-let s =Node("S",["c";"k"],["m";"n"],p)
-let t =Node("T",["a";"y"],["i";"f"],q)
-let u =Node("U",["c";"z"],["p";"g"],q)
-let v =Node("V",["m";"n"],["c"],r)
-let w =Node("W",["m";"p"],["j";"h"],t)
 
 
 
@@ -28,16 +20,18 @@ let getVariablesUsed fnode = match fnode with
 
 
 
-let rec getID x = match x with
-    main ->ID("main",[],["a";"b";"c"])
-  | p -> ID("P",["x";"y"],["z";"a"])
-  | q -> ID("Q",["z";"w"],["x";"b"])
-  | r -> ID("R",["w";"i"],["j";"b"])
-  | s -> ID("S",["c";"k"],["m";"n"])
-  | t -> ID("T",["a";"y"],["i";"f"])
-  | u -> ID("U",["c";"z"],["p";"g"])
-  | v -> ID("V",["m";"n"],["c"])
-  | w -> ID("W",["m";"p"],["j";"h"])
+let rec getID x =
+
+  match x with
+    Node("main",[],["a";"b";"c"],Empty) ->ID("main",[],["a";"b";"c"])
+  | Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) -> ID("P",["x";"y"],["z";"a"])
+  | Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) -> ID("Q",["z";"w"],["x";"b"])
+  | Node("R",["w";"i"],["j";"b"],Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) ) -> ID("R",["w";"i"],["j";"b"])
+  | Node("S",["c";"k"],["m";"n"],Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) ) -> ID("S",["c";"k"],["m";"n"])
+  | Node("T",["a";"y"],["i";"f"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) )  -> ID("T",["a";"y"],["i";"f"])
+  | Node("U",["c";"z"],["p";"g"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) ) -> ID("U",["c";"z"],["p";"g"])
+  | Node("V",["m";"n"],["c"],Node("R",["w";"i"],["j";"b"],Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) ) ) -> ID("V",["m";"n"],["c"])
+  | Node("W",["m";"p"],["j";"h"],Node("T",["a";"y"],["i";"f"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) ) ) -> ID("W",["m";"p"],["j";"h"])
   | _ -> raise InvalidProcedureName
 
 
@@ -46,15 +40,15 @@ let rec getID x = match x with
 
 
 let getProcedure x = match x with
-    "main" -> main
-  | "P"->p
-  | "Q"->q
-  | "R"->r
-  | "S"->s
-  | "T"->t
-  | "U"->u
-  | "V"->v
-  | "W"->w
+    "main" ->Node("main",[],["a";"b";"c"],Empty)
+  | "P"->Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty))
+  | "Q"->Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty))
+  | "R"->Node("R",["w";"i"],["j";"b"],Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) )
+  | "S"->Node("S",["c";"k"],["m";"n"],Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) )
+  | "T"->Node("T",["a";"y"],["i";"f"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) )
+  | "U"->Node("U",["c";"z"],["p";"g"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) )
+  | "V"->Node("V",["m";"n"],["c"],Node("R",["w";"i"],["j";"b"],Node("P",["x";"y"],["z";"a"],Node("main",[],["a";"b";"c"],Empty)) ) )
+  | "W"->Node("W",["m";"p"],["j";"h"],Node("T",["a";"y"],["i";"f"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) ) )
   | _ -> raise InvalidProcedureName
 
 
@@ -62,7 +56,7 @@ let getProcedure x = match x with
 let rec getAllAncestors fnode =
   match fnode with
     Empty -> []
-  | Node(_,_,_,pnode) -> [fnode]::(getAllAncestors pnode)
+  | Node(_,_,_,pnode) -> fnode::(getAllAncestors pnode)
 
 
 let getParent fnode = match fnode with
@@ -81,10 +75,11 @@ let rec union l1 l2 = match l1 with
 
 
 let canCall pnode qnode = (*asks if pnode can call qnode*)
+
   let ancestors = getAllAncestors pnode in
   let parent = getParent qnode in
-  if (isMember qnode ancestors) || (isMember parent ancestors) (*|| (isMember (getParent qnode) ancestors)*) then true
-  else false
+  (isMember qnode ancestors) || (isMember parent ancestors)
+
 
 let rec generateNull n =
   if(n = 0)then []
@@ -92,12 +87,13 @@ let rec generateNull n =
 
 let getLocalVariablesSize x = match x with
     Node(_,_,l,_)-> List.length l
+  | Empty ->0
 let getLocals x = match x with
     Node(_,_,l,_) -> l
-
+  | Empty -> []
 let getParametersSize x = match x with
     Node(_,para,_,_)-> List.length para
-
+  | Empty ->0
 
 let rec getNodesTillParent p nlist = match nlist with (*returns list till you find p in the list *)
     [] -> []
@@ -112,11 +108,15 @@ let rec getNodesBeforeParent p nlist = match nlist with (*returns list till you 
 
 let rec removeNodesBeforeParent p nlist = match nlist with
     []->[]
-  |n::nlist1 -> if (getParent p) = n then [] else removeNodesBeforeParent nlist1
+  |n::nlist1 -> if (getParent p) = n then [] else removeNodesBeforeParent p nlist1
 
 let getFrameSize fnode = match fnode with
     Node(name,parameters,locals,_)-> 4 + (List.length parameters)+ (List.length locals)
+  | Empty -> 0
 
+let rec addList mlist = match mlist with
+    []->0
+  |m::mlist1 -> m + addList mlist1
 let callProcedure pname parameters stack callstack fp =  (*returns a tuple of modified stack , call stack, fp*)
   let callee = getProcedure pname in
   let caller = List.hd callstack in
@@ -125,9 +125,9 @@ let callProcedure pname parameters stack callstack fp =  (*returns a tuple of mo
 
     let toMoveFromFpSL =
           let nodesTillParent = getNodesTillParent callee callstack in
-                  (2 + getParametersSize callee)  +  (List.map getFrameSize nodesTillParent) - (2 + getParametersSize (List.hd nodesTillParent))
+                  (2 + getParametersSize callee)  +  addList(List.map getFrameSize nodesTillParent) - (2 + getParametersSize (List.hd nodesTillParent))
     in
-    ( (generateNull (getLocalVariablesSize callee))@[[0;0;0;0]]@(getID callee)@(N (toMoveFromFpDL))@(N(toMoveFromFpSL))@parameters@stack , callee::callstack, fp + toMoveFromFpDL)
+    ( (generateNull (getLocalVariablesSize callee))@[REG([0;0;0;0])]@[getID callee]@[N (toMoveFromFpDL)]@[N(toMoveFromFpSL)]@parameters@stack , callee::callstack, fp + toMoveFromFpDL)
                                                     (* FP *)
   else
     raise InvalidFunctionCall
@@ -171,14 +171,14 @@ let rec isKeyIn x l = match l with
 
 let rec unionWithOverWrite l1 l2 = match l1 with (*union of l2 and l1 keys preferring value of l2*)
     [] -> l2
-  | ((k1,v1)::list1) -> if isKey k1 l2 then unionWithOverWrite list1 l2
+  | ((k1,v1)::list1) -> if isKeyIn k1 l2 then unionWithOverWrite list1 l2
     else (List.hd l1)::(unionWithOverWrite list1 l2)
 
 let  currentVariableValuePairs stack callstack =
   let topFunction = List.hd callstack in
   let localAndParameters = match topFunction with
-      Node(_,parameters,locals,parent) ->(locals,parameters) in
-
+      Node(_,parameters,locals,parent) ->(locals,parameters)
+  | _ ->([],[])in
   let parameterValues = getFirstN (getParametersSize topFunction) (removeFirstN 3 (removeBeforeId stack)) in
   let parameterVariables = snd localAndParameters in
 
@@ -196,12 +196,8 @@ let moveToStaticParentLevel stack callstack fp =
   else
     let toMoveFromFpSL = match   List.hd(List.tl (List.tl (removeBeforeId stack))) with N(x)-> x | _ -> raise InvalidStackException in
 
-    let topProcedure = List.hd callstack in
-    let modifiedStack =   (removeBeforeId stack) in
-    let numLocalsInStaticParent = match List.hd(removeFirstN toMoveFromFpSL modifiedStack) with
-        ID(x,parameters,locals)->List.length locals
-      | _ -> raise InvalidStackException in
 
+    let modifiedStack = (removeBeforeId stack) in
     let newCallStack = removeNodesBeforeParent (List.hd callstack) callstack in (*keeps the parent*)
     let modifiedStack = (removeFirstN (toMoveFromFpSL -1 - getLocalVariablesSize(List.hd newCallStack)) modifiedStack) in
     (modifiedStack,newCallStack,fp - toMoveFromFpSL)
@@ -210,11 +206,8 @@ let getStacksBeforeStaticParent  stack callstack =
   if(List.tl callstack = []) then (stack,callstack)
   else
    let toMoveFromFpSL = match   List.hd(List.tl (List.tl (removeBeforeId stack))) with N(x)-> x | _ -> raise InvalidStackException in
-   let topProcedure = List.hd callstack in
+
    let modifiedStack =   (removeBeforeId stack) in
-   let numLocalsInStaticParent = match List.hd(removeFirstN toMoveFromFpSL modifiedStack) with
-       ID(x,parameters,locals)->List.length locals
-     | _ -> raise InvalidStackException in
    let newCallStack = getNodesBeforeParent (List.hd callstack) callstack in (*keeps the parent*)
    let modifiedStack = (getBeforeId stack)@(getFirstN (toMoveFromFpSL -1 - getLocalVariablesSize(List.hd newCallStack)) modifiedStack) in
 
@@ -229,24 +222,25 @@ let rec getAllAccessibleVariables (stack, callstack, fp) =
 
 let returnBack stack callstack fp=  (*gives current frame pointer in fp*)
   let topProcedure = List.hd callstack in
-  let modifiedStack =  List.removeFirstN (3 + List.length (getParametersSize topProcedure)) (removeBeforeId stack) in
+  let modifiedStack = removeFirstN (3 +  (getParametersSize topProcedure)) (removeBeforeId stack) in
   let toMoveFromFpDL = match List.hd(List.tl (removeBeforeId stack)) with
       N(x)-> x
     |_ -> raise InvalidStackException  in
   (modifiedStack,  List.tl callstack  , fp - toMoveFromFpDL)
 
 
-let rec getPosition x mlist = match x with
+let rec getPosition x mlist = match mlist with
     [] -> raise ElementNotFoundException
-  | m::n -> if(m = x )then 1 else 1 + getPosition
+  | m::n -> if (m = x )then 1 else (1 + getPosition x n)
 
 let rec modifyVariable x value (stack,callstack,fp) =
-  if isMember x getLocals(List.hd callstack) then
-    let rankInLocals = getPosition x getLocals(List.hd callstack)in
+  let localVbls = getLocals (List.hd callstack) in
+  if isMember x localVbls then
+    let rankInLocals = getPosition x  localVbls in
     let elementsBeforeVariable = numElementsTillId stack -1 -getLocalVariablesSize (List.hd callstack) + rankInLocals - 1 in
-    (getFirstN elementsBeforeVariable stack )@(N(value))@ (removeFirstN (elementsBeforeVariable+1)  stack)
+    ((getFirstN elementsBeforeVariable stack )@[N(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
   else
-
     let (stack1,callstack1) =  getStacksBeforeStaticParent stack callstack in
-    let (stack2,callstack2) =  (modifyVariable x value (moveToStaticParentLevel)) in
-        (stack1@stack2, callstack1@callstack2)
+    let (stack2,callstack2) =  modifyVariable x value  ( moveToStaticParentLevel stack callstack fp ) in
+
+    (stack1@stack2,callstack1@callstack2)
