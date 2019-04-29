@@ -1,8 +1,9 @@
 (*
 Frame structure
 
-
-
+      Local Variables  (arragned top to bottom in the same order they appear in ID in Left to right order. example if [a,b] then a
+                                                                                                                                 b        )
+      Registers(0,0,0,0) (for use generally, though not used in this assignment)
 fp -> ID(name,parameters,locals)
        integerValue by how much we should move down from fp to go to previous functions frame pointer
        integerValue by how much we should move down from fp to go to previous statically linked frame pointer
@@ -31,24 +32,34 @@ let callstack = [main] ;;
 let fp = 3 ;;
 
 
+let rec printStringList mlist = match mlist with
+    [] -> Printf.printf " "
+  | x::mlist1 -> Printf.printf "%s " x ; printStringList mlist1
 
 let printElement x = match x with
     N(y) -> Printf.printf "    %d\n" y
 
-  | ID(name,parameters,locals) -> Printf.printf "fp->%s\n" name
+  | ID(name,parameters,locals) -> (Printf.printf "fp->%s " name;
+    Printf.printf "parameters -> ";
+    printStringList parameters;
+    Printf.printf "locals -> ";
+                                   printStringList locals;
+                                   Printf.printf "\n"
+                                  )
+
   | REG(mlist) ->   Printf.printf "Reg-(0,0,0,0)\n";;
-;;
+
 
 let printCaller x = match x with
     Node(y,_,_,_) -> Printf.printf "%s\n" y
   | Empty -> Printf.printf "Empty\n";;
-;;
+
 let funcName x = match x with
     Node (y,_,_,_) -> y
   | Empty -> "EMPTY";;
-;;
+
 let printStack stk = List.iter printElement stk;;
-let printCallerStack cstk = List.iter printCaller cstk;;
+let printCstk cstk = List.iter printCaller cstk;;
 
 let rec printSL stack callstack fp =
   if  callstack = [] then
@@ -82,3 +93,26 @@ let (stack,callstack,fp) = returnBack stack callstack fp;;
 let (stack,callstack,fp) = callProcedure "P" [N(1);N(2)] stack callstack fp;;
 let (stack,callstack,fp) = callProcedure "Q" [N(3);N(4)] stack callstack fp;;
 let (stack,callstack,fp) = callProcedure "T" [N(5);N(6)] stack callstack fp;;
+let (stack,callstack,fp) = callProcedure "W" [N(7);N(8)] stack callstack fp;;
+let (stack,callstack,fp) = callProcedure "P" [N(9);N(10)] stack callstack fp;;
+
+
+printCstk (getNodesTillParent (List.hd callstack) callstack);;
+
+let (stack,callstack) = modifyVariable "x" 11 (stack,callstack,fp);;
+printStack stack;;
+let (stack,callstack) = modifyVariable "z" (-2) (stack,callstack,fp);;
+printStack stack;;
+let (stack,callstack) = modifyVariable "b" (-23) (stack,callstack,fp);;
+printStack stack;;
+let (stack,callstack,fp) = callProcedure "R" [N(11);N(12)] stack callstack fp;;
+printStack stack;;
+
+let (stack,callstack) = modifyVariable "x" (1111) (stack,callstack,fp);;
+let (stack,callstack) = modifyVariable "a" (-999) (stack,callstack,fp);;
+
+
+
+getAllAccessibleVariables(stack,callstack,fp);;(*notice the value of b is 0 and not -23(from main)*)
+let (stack,callstack,fp) = returnBack stack callstack fp;;
+getAllAccessibleVariables(stack,callstack,fp);;(*notice the value of b is now -23*)
