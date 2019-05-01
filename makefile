@@ -4,4 +4,4 @@ all:
 	ocamlc -c a6.ml
 
 clean:
-	rm  *.cmo *.cmi 
+	rm  *.cmo *.cmi *.cmx *.o a2.ml

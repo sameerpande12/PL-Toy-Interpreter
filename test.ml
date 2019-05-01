@@ -25,12 +25,15 @@ let t =Node("T",["a";"y"],["i";"f"],q);;
 let u =Node("U",["c";"z"],["p";"g"],q);;
 let v =Node("V",["m";"n"],["c"],r);;
 let w =Node("W",["m";"p"],["j";"h"],t);;
-let allProcedures = [main;p;q;r;s;t;u;v];;
+let allProcedures = [main;p;q;r;s;t;u;v;w];;
 
 let stack = [N(0);N(0);N(0)]@[REG([0;0;0;0])]@[getID main]@[N(0);N(0)] ;;
 let callstack = [main] ;;
 let fp = 3 ;;
 
+let rec printVariables mlist = match mlist with
+    []-> Printf.printf "\n"
+  | (key,value)::mlist1-> Printf.printf "(%s,%d), " key value; printVariables mlist1
 
 let rec printStringList mlist = match mlist with
     [] -> Printf.printf " "
@@ -99,17 +102,17 @@ let (stack,callstack,fp) = callProcedure "P" [N(9);N(10)] stack callstack fp;;
 
 printCstk (getNodesTillParent (List.hd callstack) callstack);;
 
-let (stack,callstack) = modifyVariable "x" 11 (stack,callstack,fp);;
+let (stack,callstack) = modifyVariable "x" N(11) (stack,callstack,fp);;
 printStack stack;;
-let (stack,callstack) = modifyVariable "z" (-2) (stack,callstack,fp);;
+let (stack,callstack) = modifyVariable "z" N(-2) (stack,callstack,fp);;
 printStack stack;;
-let (stack,callstack) = modifyVariable "b" (-23) (stack,callstack,fp);;
+let (stack,callstack) = modifyVariable "b" N(-23) (stack,callstack,fp);;
 printStack stack;;
 let (stack,callstack,fp) = callProcedure "R" [N(11);N(12)] stack callstack fp;;
 printStack stack;;
 
-let (stack,callstack) = modifyVariable "x" (1111) (stack,callstack,fp);;
-let (stack,callstack) = modifyVariable "a" (-999) (stack,callstack,fp);;
+let (stack,callstack) = modifyVariable "x" N(1111) (stack,callstack,fp);;
+let (stack,callstack) = modifyVariable "a" N(-999) (stack,callstack,fp);;
 
 
 

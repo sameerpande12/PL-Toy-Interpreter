@@ -52,8 +52,6 @@ let getProcedure x = match x with
   | "W"->Node("W",["m";"p"],["j";"h"],Node("T",["a";"y"],["i";"f"],Node("Q",["z";"w"],["x";"b"],Node("main",[],["a";"b";"c"],Empty)) ) )
   | _ -> raise InvalidProcedureName
 
-
-
 let rec getAllAncestors fnode =
   match fnode with
     Empty -> []
@@ -247,16 +245,16 @@ let rec modifyVariable x value (stack,callstack,fp) =
   if isMember x localVbls then
     let rankInLocals = getPosition x  localVbls in
     let elementsBeforeVariable = numElementsTillId stack -1 -getLocalVariablesSize (List.hd callstack) + rankInLocals - 1 in
-    ((getFirstN elementsBeforeVariable stack )@[N(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
+    ((getFirstN elementsBeforeVariable stack )@[(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
   else if(isMember x parameterVbls) then
     let rankInPara = getPosition x parameterVbls in
     let elementsBeforeVariable = numElementsTillId stack + 1 + 2 + rankInPara-1 in
 
-    ((getFirstN elementsBeforeVariable stack )@[N(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
+    ((getFirstN elementsBeforeVariable stack )@[(value)]@ (removeFirstN (elementsBeforeVariable+1)  stack) , callstack)
   else
     if(List.tl callstack = [])then raise VariableNotFoundException
     else
         let (stack1,callstack1) =  getStacksBeforeStaticParent stack callstack in
-        let (stack2,callstack2) =  modifyVariable x value  ( moveToStaticParentLevel stack callstack fp ) in
+        let (stack2,callstack2) =  modifyVariable x (value)  ( moveToStaticParentLevel stack callstack fp ) in
 
         (stack1@stack2,callstack1@callstack2)
