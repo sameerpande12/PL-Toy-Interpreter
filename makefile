@@ -1,7 +1,5 @@
 all:
-	ocamllex a2.mll
-	ocamlc -c a2.ml
-	ocamlc -c a6.ml
-
+	ocamllex lexer.mll
+	ocamlopt -o exe lexer.ml a6.ml interpreter.ml
 clean:
-	rm  *.cmo *.cmi *.cmx *.o a2.ml
+	rm  lexer.ml *.cmi *.cmx *.o exe

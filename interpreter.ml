@@ -1,7 +1,6 @@
-#load "a6.cmo";;
-#load "a2.cmo";;
+
 open A6;;
-open A2;;
+open Lexer;;
 
 Printf.printf
 "Welcome!
@@ -87,7 +86,7 @@ let w =Node("W",["m";"p"],["j";"h"],t)in
 let allProcedures = [main;p;q;r;s;t;u;v;w]in
 
 
-let scan s = A2.read (Lexing.from_string s)in
+let scan s = Lexer.read (Lexing.from_string s)in
 let stack = ref ([N(0);N(0);N(0)]@[REG([0;0;0;0])]@[getID main]@[N(0);N(0)]) in
 let callstack = ref([main]) in
 let fp = ref(3) in
